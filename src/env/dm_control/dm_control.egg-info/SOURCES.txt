@@ -1,3 +1,5 @@
+AUTHORS
+LICENSE
 README.md
 setup.py
 dm_control/__init__.py
