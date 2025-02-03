@@ -1,4 +1,4 @@
-for seed in {1..10} 
+for seed in {11..20} 
 do
     CUDA_VISIBLE_DEVICES=0 python3 src/eval.py \
 	--domain_name cartpole \
@@ -11,5 +11,5 @@ do
 	--seed $seed \
 	--work_dir logs/cartpole_swingup/inv/0 \
 	--pad_checkpoint 500k \
-	--pad_num_episodes 10
+	--pad_num_episodes 100
 done
