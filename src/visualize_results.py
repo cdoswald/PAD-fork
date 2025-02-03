@@ -12,6 +12,8 @@ if __name__ == "__main__":
 
 	args = parse_args()
 
+	domain = "cartpole"
+	task = "swingup"
 	work_dir = "logs/cartpole_swingup/inv/0"
 	mode = "color_easy"
 	results_fp_pattern = os.path.join(work_dir, f'pad_{mode}_evalseed_*.pt')
@@ -39,7 +41,7 @@ if __name__ == "__main__":
 		# Average across seeds
 		rewards_episode_by_seed = np.array(temp_list).T
 		rewards_episode_by_avg_seed = np.mean(rewards_episode_by_seed, axis=1)
-		
+
 		# Compute standard deviation
 		rewards_stddev_avg_seed = np.std(rewards_episode_by_seed, axis=1)
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
 		rewards_episode_by_seed_sorted = np.sort(rewards_episode_by_seed, axis=1)
 		rewards_episode_lower_bound = rewards_episode_by_seed_sorted[:, lower_bound_seed_idx]
 		rewards_episode_upper_bound = rewards_episode_by_seed_sorted[:, upper_bound_seed_idx]
-		
+
 		# Update plotting parameters
 		n_episodes = len(rewards_episode_by_avg_seed)
 		max_y = max(max_y, np.max(rewards_episode_by_avg_seed))
@@ -87,4 +89,7 @@ if __name__ == "__main__":
 	axes.set_ylim(0, int(max_y * 1.1))
 	axes.set_xlabel("Episode")
 	axes.set_ylabel("Average Reward")
-	axes.set_title("")
+	axes.set_title(
+		f"Average Episode Reward for {domain.title()} {task.title()}" +
+		f"\nMode: {mode}; # seeds: {n_seeds}"
+	)
