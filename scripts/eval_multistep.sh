@@ -1,0 +1,15 @@
+for seed in {1..10} 
+do
+    CUDA_VISIBLE_DEVICES=0 python3 src/eval.py \
+	--domain_name cartpole \
+	--task_name swingup \
+	--action_repeat 8 \
+	--mode color_easy \
+	--use_inv \
+	--ss_update_quantities "1,2,4,8,16" \
+	--num_shared_layers 8 \
+	--seed $seed \
+	--work_dir logs/cartpole_swingup/inv/0 \
+	--pad_checkpoint 500k \
+	--pad_num_episodes 10
+done
