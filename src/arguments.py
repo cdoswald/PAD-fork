@@ -52,6 +52,7 @@ def parse_args():
 	parser.add_argument('--num_shared_layers', default=-1, type=int) # number of shared conv layers
 	parser.add_argument('--num_filters', default=32, type=int) # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int) # latent dimension for curl
+	parser.add_argument('--ss_update_quantities', default=1) # number of updates per step
 	
 	# sac
 	parser.add_argument('--discount', default=0.99, type=float)

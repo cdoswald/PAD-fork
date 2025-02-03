@@ -15,6 +15,7 @@ from utils import get_curl_pos_neg
 def evaluate(env, agent, args, video, adapt=False):
 	"""Evaluate an agent, optionally adapt using PAD"""
 	episode_rewards = []
+	all_losses = []
 
 	for i in tqdm(range(args.pad_num_episodes)):
 		ep_agent = deepcopy(agent) # make a new copy
@@ -45,35 +46,38 @@ def evaluate(env, agent, args, video, adapt=False):
 			# Make self-supervised update if flag is true
 			if adapt:
 				if args.use_rot: # rotation prediction
+					for _ in range(args.ss_update_quantity):
 
-					# Prepare batch of cropped observations
-					batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
-					batch_next_obs = utils.random_crop(batch_next_obs)
+						# Prepare batch of cropped observations
+						batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
+						batch_next_obs = utils.random_crop(batch_next_obs)
 
-					# Adapt using rotation prediction
-					losses.append(ep_agent.update_rot(batch_next_obs))
+						# Adapt using rotation prediction
+						losses.append(ep_agent.update_rot(batch_next_obs))
 				
 				if args.use_inv: # inverse dynamics model
+					for _ in range(args.ss_update_quantity):
 
-					# Prepare batch of observations
-					batch_obs = utils.batch_from_obs(torch.Tensor(obs).cuda(), batch_size=args.pad_batch_size)
-					batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
-					batch_action = torch.Tensor(action).cuda().unsqueeze(0).repeat(args.pad_batch_size, 1)
+						# Prepare batch of observations
+						batch_obs = utils.batch_from_obs(torch.Tensor(obs).cuda(), batch_size=args.pad_batch_size)
+						batch_next_obs = utils.batch_from_obs(torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size)
+						batch_action = torch.Tensor(action).cuda().unsqueeze(0).repeat(args.pad_batch_size, 1)
 
-					# Adapt using inverse dynamics prediction
-					losses.append(ep_agent.update_inv(utils.random_crop(batch_obs), utils.random_crop(batch_next_obs), batch_action))
+						# Adapt using inverse dynamics prediction
+						losses.append(ep_agent.update_inv(utils.random_crop(batch_obs), utils.random_crop(batch_next_obs), batch_action))
 
 				if args.use_curl: # CURL
+					for _ in range(args.ss_update_quantity):
 
-					# Add observation to replay buffer for use as negative samples
-					# (only first argument obs is used, but we store all for convenience)
-					replay_buffer.add(obs, action, reward, next_obs, True)
+						# Add observation to replay buffer for use as negative samples
+						# (only first argument obs is used, but we store all for convenience)
+						replay_buffer.add(obs, action, reward, next_obs, True)
 
-					# Prepare positive and negative samples
-					obs_anchor, obs_pos = get_curl_pos_neg(next_obs, replay_buffer)
+						# Prepare positive and negative samples
+						obs_anchor, obs_pos = get_curl_pos_neg(next_obs, replay_buffer)
 
-					# Adapt using CURL
-					losses.append(ep_agent.update_curl(obs_anchor, obs_pos, ema=True))
+						# Adapt using CURL
+						losses.append(ep_agent.update_curl(obs_anchor, obs_pos, ema=True))
 
 			video.record(env, losses)
 			obs = next_obs
@@ -81,8 +85,9 @@ def evaluate(env, agent, args, video, adapt=False):
 
 		video.save(f'{args.mode}_pad_{i}.mp4' if adapt else f'{args.mode}_eval_{i}.mp4')
 		episode_rewards.append(episode_reward)
+		all_losses.append(losses)
 
-	return np.mean(episode_rewards)
+	return episode_rewards, all_losses
 
 
 def init_env(args):
@@ -115,26 +120,38 @@ def main(args):
 	agent.load(model_dir, args.pad_checkpoint)
 
 	# Evaluate agent without PAD
-	print(f'Evaluating {args.work_dir} for {args.pad_num_episodes} episodes (mode: {args.mode})')
-	eval_reward = evaluate(env, agent, args, video)
-	print('eval reward:', int(eval_reward))
+	print(f'Evaluating {args.work_dir} for {args.pad_num_episodes} episodes (mode: {args.mode}; eval seed: {args.seed})')
+	eval_episode_rewards, _ = evaluate(env, agent, args, video)
+	print('Average eval reward:', round(np.mean(eval_episode_rewards), 0))
 
 	# Evaluate agent with PAD (if applicable)
-	pad_reward = None
+	ss_update_quantities = [int(x) for x in args.ss_update_quantities.split(",")]
+	all_pad_rewards = {}
+	all_pad_losses = {}
 	if args.use_inv or args.use_curl or args.use_rot:
-		env = init_env(args)
-		print(f'Policy Adaptation during Deployment of {args.work_dir} for {args.pad_num_episodes} episodes (mode: {args.mode})')
-		pad_reward = evaluate(env, agent, args, video, adapt=True)
-		print('pad reward:', int(pad_reward))
+		for ss_update_quantity in ss_update_quantities:
+			args.ss_update_quantity = ss_update_quantity
+			env = init_env(args)
+			print(
+				f'Policy Adaptation during Deployment of {args.work_dir} for '+
+				f'{args.pad_num_episodes} episodes (mode: {args.mode}; eval seed: {args.seed}; '+
+				f'SSL update steps: {ss_update_quantity})'
+			)
+			pad_episode_rewards, pad_losses = evaluate(env, agent, args, video, adapt=True)
+			print('Average pad reward:', round(np.mean(pad_episode_rewards), 0))
+			all_pad_rewards[ss_update_quantity] = pad_episode_rewards
+			all_pad_losses[ss_update_quantity] = pad_losses
 
 	# Save results
-	results_fp = os.path.join(args.work_dir, f'pad_{args.mode}.pt')
+	results_fp = os.path.join(args.work_dir, f'pad_{args.mode}_evalseed_{args.seed}.pt')
 	torch.save({
 		'args': args,
-		'eval_reward': eval_reward,
-		'pad_reward': pad_reward
+		'eval_episode_rewards': eval_episode_rewards,
+		'pad_episode_rewards': all_pad_rewards,
+		'pad_ssl_losses': all_pad_losses,
 	}, results_fp)
 	print('Saved results to', results_fp)
+	
 
 
 if __name__ == '__main__':
