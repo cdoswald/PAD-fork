@@ -18,7 +18,9 @@ def evaluate(env, agent, args, video, adapt=False):
 	all_losses = []
 
 	for i in tqdm(range(args.pad_num_episodes)):
-		ep_agent = deepcopy(agent) # make a new copy
+
+		if i == 0 or args.pad_reset_agent == "episode":
+			ep_agent = deepcopy(agent) # make a new copy
 
 		if args.use_curl: # initialize replay buffer for CURL
 			replay_buffer = utils.ReplayBuffer(
@@ -79,11 +81,17 @@ def evaluate(env, agent, args, video, adapt=False):
 						# Adapt using CURL
 						losses.append(ep_agent.update_curl(obs_anchor, obs_pos, ema=True))
 
+				# Reset model weights between environment steps (if applicable)
+				if args.pad_reset_agent == "ss_updates":
+					ep_agent = deepcopy(agent)
+					ep_agent.train()
+
 			video.record(env, losses)
 			obs = next_obs
 			step += 1
 
-		video.save(f'{args.mode}_pad_{i}.mp4' if adapt else f'{args.mode}_eval_{i}.mp4')
+		reset_suffix = f"reset_{args.pad_reset_agent}"
+		video.save(f'{args.mode}_{reset_suffix}_pad_{i}.mp4' if adapt else f'{args.mode}_eval_{i}.mp4')
 		episode_rewards.append(episode_reward)
 		all_losses.append(losses)
 
@@ -143,7 +151,9 @@ def main(args):
 			all_pad_losses[ss_update_quantity] = pad_losses
 
 	# Save results
-	results_fp = os.path.join(args.work_dir, f'pad_{args.mode}_evalseed_{args.seed}.pt')
+	subdir = os.path.join(args.work_dir, f"reset_{args.pad_reset_agent}")
+	os.makedirs(subdir, exist_ok=True)
+	results_fp = os.path.join(subdir, f'pad_{args.mode}_evalseed_{args.seed}.pt')
 	torch.save({
 		'args': args,
 		'eval_episode_rewards': eval_episode_rewards,

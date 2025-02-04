@@ -597,24 +597,24 @@ class SacSSAgent(object):
 
     def load(self, model_dir, step):
         self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
+            torch.load('%s/actor_%s.pt' % (model_dir, step), weights_only=True)
         )
         self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
+            torch.load('%s/critic_%s.pt' % (model_dir, step), weights_only=True)
         )
         if self.rot is not None:
             self.rot.load_state_dict(
-                torch.load('%s/rot_%s.pt' % (model_dir, step))
+                torch.load('%s/rot_%s.pt' % (model_dir, step), weights_only=True)
             )
         if self.inv is not None:
             self.inv.load_state_dict(
-                torch.load('%s/inv_%s.pt' % (model_dir, step))
+                torch.load('%s/inv_%s.pt' % (model_dir, step), weights_only=True)
             )
         if self.curl is not None:
             self.curl.load_state_dict(
-                torch.load('%s/curl_%s.pt' % (model_dir, step))
+                torch.load('%s/curl_%s.pt' % (model_dir, step), weights_only=True)
             )
         if self.ss_encoder is not None:
             self.ss_encoder.load_state_dict(
-                torch.load('%s/ss_encoder_%s.pt' % (model_dir, step))
+                torch.load('%s/ss_encoder_%s.pt' % (model_dir, step), weights_only=True)
             )

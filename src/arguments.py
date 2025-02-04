@@ -70,12 +70,14 @@ def parse_args():
 	parser.add_argument('--pad_checkpoint', default=None, type=str)
 	parser.add_argument('--pad_batch_size', default=32, type=int)
 	parser.add_argument('--pad_num_episodes', default=100, type=int)
+	parser.add_argument('--pad_reset_agent', default='episode', type=str) # agent weight reset freq
 
 	args = parser.parse_args()
 
 	assert args.mode in {'train', 'color_easy', 'color_hard'} or 'video' in args.mode, f'unrecognized mode "{args.mode}"'
 	assert args.seed is not None, 'must provide seed for experiment'
 	assert args.work_dir is not None, 'must provide a working directory for experiment'
+	assert args.pad_reset_agent in {'episode', 'ss_updates', 'none'}, f'unrecognized agent reset freq "{args.pad_reset_agent}"'
 
 	assert np.sum([args.use_inv, args.use_rot, args.use_curl]) <= 1, \
 		'can use at most one self-supervised task'
