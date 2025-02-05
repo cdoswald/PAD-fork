@@ -45,6 +45,11 @@ def evaluate(env, agent, args, video, adapt=False):
 			next_obs, reward, done, _ = env.step(action)
 			episode_reward += reward
 			
+			# Reset model weights between environment steps (if applicable)
+			if args.pad_reset_agent == "ss_updates":
+				ep_agent = deepcopy(agent)
+				ep_agent.train()
+
 			# Make self-supervised update if flag is true
 			if adapt:
 				if args.use_rot: # rotation prediction
@@ -80,11 +85,6 @@ def evaluate(env, agent, args, video, adapt=False):
 
 						# Adapt using CURL
 						losses.append(ep_agent.update_curl(obs_anchor, obs_pos, ema=True))
-
-				# Reset model weights between environment steps (if applicable)
-				if args.pad_reset_agent == "ss_updates":
-					ep_agent = deepcopy(agent)
-					ep_agent.train()
 
 			video.record(env, losses)
 			obs = next_obs
