@@ -4,6 +4,16 @@ import os
 import random
 
 
+def check_model_equality(model1, model2):
+	diffs = []
+	for (name1, param1), (name2, param2) in zip(
+		model1.state_dict().items(), model2.state_dict().items()
+	):
+		if name1 != name2 or not torch.equal(param1, param2):
+			diffs.append((name1, name2))
+	return diffs
+
+
 class eval_mode(object):
     def __init__(self, *models):
         self.models = models
