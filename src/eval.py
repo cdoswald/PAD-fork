@@ -38,6 +38,8 @@ def evaluate(env, agent, args, video, adapt=False):
 		step = 0
 		ep_agent.train()
 
+		#TODO: extract source domain image
+		
 		while not done:
 			# Take step
 			with utils.eval_mode(ep_agent):
@@ -167,3 +169,89 @@ def main(args):
 if __name__ == '__main__':
 	args = parse_args()
 	main(args)
+
+
+
+## Debug
+import matplotlib.pyplot as plt
+
+def show_frame(input: np.ndarray, frame=1):
+	plt.imshow(input[(3*(frame-1)):3*(frame), :, :].transpose(1, 2, 0))
+
+def init_env(args):
+		utils.set_seed_everywhere(args.seed)
+		return make_pad_env(
+			domain_name=args.domain_name,
+			task_name=args.task_name,
+			seed=args.seed,
+			episode_length=args.episode_length,
+			action_repeat=args.action_repeat,
+			mode=args.mode
+		)
+
+
+class TestArgs():
+
+	def __init__(self):
+		pass
+
+
+args = TestArgs()
+args.domain_name = "cartpole"
+args.task_name = "swingup"
+args.seed = 1
+args.episode_length = 1000
+args.action_repeat = 8
+args.mode = "color_hard"
+
+env = make_pad_env(
+	args.domain_name,
+	args.task_name,
+	args.seed,
+	args.episode_length,
+	action_repeat=args.action_repeat,
+	mode=args.mode
+)
+
+obs = env.reset()
+plt.imshow(obs[:3, :, :].transpose(1, 2, 0))
+
+env._mode = "train"
+obs_src = env.reset()
+plt.imshow(obs_src[:3, :, :].transpose(1, 2, 0))
+
+env._mode = "color_easy"
+env.reload_physics
+DEL = env._get_dmc_wrapper()
+env.get_random_color()
+
+env.reload_physics()
+obs = env.reset()
+plt.imshow(obs[:3, :, :].transpose(1, 2, 0))
+
+env_standard = make_pad_env(
+	args.domain_name,
+	args.task_name,
+	args.seed,
+	args.episode_length,
+	action_repeat=args.action_repeat,
+	mode="train"
+)
+
+obs_standard = env_standard.reset()
+show_frame(obs_standard, frame=1)
+
+exp_state = env.get_state()
+show_frame(obs, frame=1)
+
+
+env_standard.set_state(env.get_state())
+assert np.all(env_standard.get_state() == env.get_state())
+action = np.ndarray(shape=(1,), dtype=np.float32) * 4
+
+next_obs, _, _, _ = env.step(action)
+next_obs_standard, _, _, _ = env_standard.step(action)
+show_frame(next_obs, 3)
+show_frame(next_obs_standard, 3)
+
+obs = next_obs
