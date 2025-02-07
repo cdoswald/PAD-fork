@@ -1,0 +1,11 @@
+CUDA_VISIBLE_DEVICES=0 python3 src/train.py \
+    --domain_name cheetah \
+    --task_name run \
+    --action_repeat 4 \
+    --mode train \
+    --train_steps 150000 \
+    --use_rot \
+    --num_shared_layers 8 \
+    --seed 0 \
+    --work_dir logs/cheetah_run/rot/0 \
+    --save_model
