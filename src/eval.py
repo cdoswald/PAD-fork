@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 import torch
 import os
 from copy import deepcopy
@@ -16,12 +17,12 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 	"""Evaluate an agent, optionally adapt using PAD"""
 	episode_rewards = []
 	all_losses = []
-	embedding_dists = {"actor_enc":[], "aux_encoder":[]}
+	embedding_dists = {"actor_enc":[], "aux_enc":[]}
 
-	# Create common seed for resetting evaluation and original environments
-	first_reset_random_seed = int(np.random.random() * 9999)
-	print(f"First reset random seed: {first_reset_random_seed}")
-
+	validate_frame_sync_iter = 0
+	validate_frame_sync_dir = os.path.join(args.work_dir, "frame_sync_validation")
+	os.makedirs(validate_frame_sync_dir, exist_ok=True)
+	
 	# Make copy of agent to compare train and eval embeddings (if applicable)
 	if orig_env is not None:
 		orig_agent = deepcopy(agent)
@@ -40,7 +41,6 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 			)
 		video.init(enabled=True)
 
-		env.seed(first_reset_random_seed)
 		obs = env.reset()
 		done = False
 		episode_reward = 0
@@ -48,10 +48,19 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 		step = 0
 		ep_agent.train()
 
+		# Synchronize starting position
+		# (note that we have to do this here since the initial frame stack queue starts
+		# with 3 observations, and only 1 observation is added in subsequent steps)
 		if orig_env is not None:
-			orig_env.seed(first_reset_random_seed)
-			orig_obs = orig_env.reset()
-			assert np.all(orig_env.get_state() == env.get_state())
+			_ = orig_env.reset()
+			orig_env.physics.data.qpos[:] = deepcopy(env.physics.data.qpos[:])
+			orig_env.physics.forward()
+			assert np.all(orig_env.get_state()[:2] == env.get_state()[:2]) # check position
+
+			# Reset initial frame stack queue after matching state
+			orig_env_obs = orig_env.render("rgb_array").transpose(2, 0, 1)
+			for _ in range(len(orig_env.env._frames)): # starts with stack of k=3 frames
+				orig_env.env._frames.append(orig_env_obs)
 
 		# Start evaluation
 		while not done:
@@ -62,34 +71,48 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 			next_obs, reward, done, _ = env.step(action)
 			episode_reward += reward
 
-			# Take EXACT same step with orig environment to compare embeddings (if applicable)
+			# Calculate embedding distance between train and eval environments (if applicable)
 			if orig_env is not None:
-				orig_next_obs, _, _, _ = orig_env.step(action)
-				assert np.all(orig_env.get_state() == env.get_state())
-				assert orig_next_obs.shape == next_obs.shape, print(
-					f"orig next obs shape: {orig_obs.shape}; eval next obs shape: {obs.shape}"
-				)
 
-				# Convert to batch format
-				orig_next_obs_batch = utils.batch_from_obs(
-					torch.Tensor(orig_next_obs).cuda(), batch_size=args.pad_batch_size
+				# Update orig env position to match eval env position
+				orig_env.physics.data.qpos[:] = deepcopy(env.physics.data.qpos[:])
+				orig_env.physics.forward()
+				assert np.all(orig_env.get_state()[:2] == env.get_state()[:2]) # check position
+
+				# Render and add observation to frame stack queue
+				orig_env.env._frames.append(orig_env.render("rgb_array").transpose(2, 0, 1))
+
+				# Save out frames from original and evaluation environment 
+				# periodically to validate that state position matches
+				validate_frame_sync_iter += 1
+				if validate_frame_sync_iter % 400 == 0:
+					temp_file = f"frames_sync_mode_{args.mode}_evalseed_{args.seed}_iter{validate_frame_sync_iter}.p"
+					with open(os.path.join(validate_frame_sync_dir, temp_file), "wb") as io:
+						pickle.dump((env.env._frames, orig_env.env._frames), io)
+
+				# Convert observation to batch format
+				orig_env_next_obs = orig_env.env._get_obs()
+				orig_env_next_obs_batch = utils.batch_from_obs(
+					torch.Tensor(orig_env_next_obs).cuda(),
+					batch_size=args.pad_batch_size
 				)
 				next_obs_batch = utils.batch_from_obs(
-					torch.Tensor(next_obs).cuda(), batch_size=args.pad_batch_size
+					torch.Tensor(next_obs).cuda(),
+					batch_size=args.pad_batch_size
 				)
 
 				# Calculate distance between original and eval obs embeddings 
-				orig_enc_actor = orig_agent.actor.encoder(orig_next_obs_batch, detach=True).detach().cpu()
+				orig_enc_actor = orig_agent.actor.encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
 				updated_enc_actor = ep_agent.actor.encoder(next_obs_batch, detach=True).detach().cpu()
 
-				orig_enc_aux = orig_agent.ss_encoder(orig_next_obs_batch, detach=True).detach().cpu()
+				orig_enc_aux = orig_agent.ss_encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
 				updated_enc_aux = ep_agent.ss_encoder(next_obs_batch, detach=True).detach().cpu()
 
 				actor_enc_dist = torch.norm(orig_enc_actor - updated_enc_actor, p=2) # L2 norm
 				aux_enc_dist = torch.norm(orig_enc_aux - updated_enc_aux, p=2)
 
 				embedding_dists["actor_enc"].append(actor_enc_dist)
-				embedding_dists["aux_encoder"].append(aux_enc_dist)
+				embedding_dists["aux_enc"].append(aux_enc_dist)
 
 			# Reset model weights between environment steps (if applicable)
 			if args.pad_reset_agent == "ss_updates":
@@ -260,7 +283,7 @@ if __name__ == '__main__':
 # args.action_repeat = 8
 # args.mode = "color_hard"
 
-# env = make_pad_env(
+# env1 = make_pad_env(
 # 	args.domain_name,
 # 	args.task_name,
 # 	args.seed,
@@ -269,6 +292,31 @@ if __name__ == '__main__':
 # 	mode=args.mode
 # )
 
+# env2 = make_pad_env(
+# 	args.domain_name,
+# 	args.task_name,
+# 	args.seed,
+# 	args.episode_length,
+# 	action_repeat=args.action_repeat,
+# 	mode="train"
+# )
+
+# obs = env1.step(env1.action_space.sample())
+# frames_copy = deepcopy(env1.env._frames)
+# # env2.physics.data.qvel[:] = deepcopy(env1.physics.data.qvel[:])
+
+# plt.imshow(env2.render("rgb_array"))
+# plt.imshow(env1.render("rgb_array"))
+
+
+# plt.imshow(env1.env._frames[0].transpose(1, 2, 0))
+# plt.imshow(env1.env._frames[1].transpose(1, 2, 0))
+# plt.imshow(env1.env._frames[2].transpose(1, 2, 0))
+
+
+# plt.imshow(env2.env._frames[0].transpose(1, 2, 0))
+# plt.imshow(env2.env._frames[1].transpose(1, 2, 0))
+# plt.imshow(env2.env._frames[2].transpose(1, 2, 0))
 
 
 # default_colors = {
@@ -278,8 +326,18 @@ if __name__ == '__main__':
 # 	'skybox_rgb': np.array([0.4, 0.6, 0.8]),
 # }
 
+# env2.reload_physics(default_colors)
+# new_frame = env2.render("rgb_array").transpose(2, 0, 1)
+
+# plt.imshow(new_frame.transpose(1, 2, 0))
+
+
+
 # obs = env.reset()
 # show_frame(obs, 3)
+
+# env.reload_physics(default_colors)
+# env.render(mode="rgb_array")
 
 # dir(env.physics.model)
 

@@ -77,7 +77,7 @@ class ColorWrapper(gym.Wrapper):
 
 	def _load_colors(self):
 		assert self._mode in {'color_easy', 'color_hard'}
-		self._colors = torch.load(f'src/env/data/{self._mode}.pt')
+		self._colors = torch.load(f'src/env/data/{self._mode}.pt', weights_only=False)
 
 	def get_random_color(self):
 		assert len(self._colors) >= 100, 'env must include at least 100 colors'

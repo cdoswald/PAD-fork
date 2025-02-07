@@ -25,7 +25,7 @@ if __name__ == "__main__":
 	steps_per_episode = 1000
 	work_dir = "logs/cartpole_swingup/inv/0"
 	modes = ["color_easy", "color_hard"]
-	reset_agent_modes = ["episode", "none"]
+	reset_agent_modes = ["episode", "none", "ss_updates"]
 	plot_update_steps = [0, 1, 2, 4, 8, 16]
 
 	plot_CI = False
