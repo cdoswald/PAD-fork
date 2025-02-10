@@ -1,12 +1,8 @@
 from glob import glob
 import matplotlib.pyplot as plt
-import numpy as np
 import os
 from pathlib import Path
 import pickle
-import seaborn as sns
-from scipy.ndimage import gaussian_filter1d
-import torch
 
 
 def show_all_frames(data):
@@ -30,25 +26,22 @@ def show_all_frames(data):
 
 if __name__ == "__main__":
 
-    color_dict = {
-        0:"tab:blue",
-        1:"tab:orange",
-        2:"tab:green",
-        4:"tab:red",
-        8:"tab:purple",
-        16:"tab:brown"
-    }
+    work_dirs = [
+        "logs/cartpole_swingup/inv/0",
+        "logs/cartpole_swingup/rot/0",
+        "logs/cheetah_run/inv/0",
+    ]
 
-    work_dir = "logs/cheetah_run/inv/0"
-    frames_sync_dir = os.path.join(work_dir, "frame_sync_validation")
-    frames_sync_files = glob(os.path.join(frames_sync_dir, "frames_sync*"))
-    figures_dir = os.path.join(frames_sync_dir, "figures")
-    os.makedirs(figures_dir, exist_ok=True)
+    for work_dir in work_dirs:
+        frames_sync_dir = os.path.join(work_dir, "frame_sync_validation")
+        frames_sync_files = glob(os.path.join(frames_sync_dir, "frames_sync*"))
+        figures_dir = os.path.join(frames_sync_dir, "figures")
+        os.makedirs(figures_dir, exist_ok=True)
 
-    for file in frames_sync_files[::2]:
-        with open(file, "rb") as io:
-            data = pickle.load(io)
-        fig = show_all_frames(data)
-        save_path = os.path.join(figures_dir, f"{Path(file).stem}.png")
-        fig.savefig(save_path, bbox_inches="tight")
-        plt.close()
+        for file in frames_sync_files[::1]:
+            with open(file, "rb") as io:
+                data = pickle.load(io)
+            fig = show_all_frames(data)
+            save_path = os.path.join(figures_dir, f"{Path(file).stem}.png")
+            fig.savefig(save_path, bbox_inches="tight")
+            plt.close()
