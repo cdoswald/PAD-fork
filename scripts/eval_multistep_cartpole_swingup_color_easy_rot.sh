@@ -30,7 +30,7 @@ do
 	--num_shared_layers 8 \
 	--seed $seed \
 	--work_dir logs/cartpole_swingup/rot/0 \
-	--pad_checkpoint 500k \
+	--pad_checkpoint 100k \
 	--pad_num_episodes 100 \
 	--pad_reset_agent "none"
 done
@@ -47,7 +47,7 @@ do
 	--num_shared_layers 8 \
 	--seed $seed \
 	--work_dir logs/cartpole_swingup/rot/0 \
-	--pad_checkpoint 500k \
+	--pad_checkpoint 100k \
 	--pad_num_episodes 100 \
 	--pad_reset_agent "ss_updates"
 done
