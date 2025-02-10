@@ -1,11 +1,11 @@
 from glob import glob
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import os
 import seaborn as sns
 from scipy.ndimage import gaussian_filter1d
 import torch
-
 
 
 if __name__ == "__main__":
@@ -18,7 +18,9 @@ if __name__ == "__main__":
 	reset_agent_modes = ["episode", "none", "ss_updates"]
 	plot_update_steps = [0, 1, 2, 4, 8, 16]
 
-	gaussian_filter_stddev = 1
+	rewards_gaussian_filter_stddev = 1
+	aux_loss_gaussian_filter_stddev = 1
+	enc_dist_gaussian_filter_stddev = 100
 
 	color_dict = {
 		0:"tab:blue",
@@ -58,41 +60,79 @@ if __name__ == "__main__":
 
 					if seed_results_files:
 
-						for gaussian_filter in [True, False]:
+						# Load data
+						data_dict = {}
+						for plot_update_step in plot_update_steps:
+							print(
+								f"Loading data for {domain} {task}, {aux_model}, "+
+								f"{color_mode}, {sub_dir}, {plot_update_step} aux updates"
+							)
+							# Get results for all seeds for plot_update_step value
+							temp_reward_list = []
+							temp_ssl_loss_list = []
+							temp_actor_embed_dists_list = []
+							temp_aux_embed_dists_list = []
+							for seed_i_result_file in seed_results_files:
+								seed_i_results = torch.load(seed_i_result_file, weights_only=False)
+								# Get episode rewards
+								temp_reward_list.append(seed_i_results["episode_rewards"][plot_update_step])
+								# Get auxiliary losses
+								if plot_update_step != 0:
+									temp_ssl_loss_list.append(
+										seed_i_results["aux_losses"][plot_update_step]
+									)
+								# Get encoder distances
+								temp_actor_embed_dists_list.append([
+									x.item() for x in 
+									seed_i_results["embed_dists"][plot_update_step]["actor_enc"]
+								])
+								temp_aux_embed_dists_list.append([
+									x.item() for x in 
+									seed_i_results["embed_dists"][plot_update_step]["aux_enc"]
+								])
+							# Concatenate across seeds
+							temp_rewards_episode_by_seed = np.array(temp_reward_list).T
+							temp_actor_enc_dists_step_by_seed = np.array(temp_actor_embed_dists_list).T
+							temp_aux_enc_dists_step_by_seed = np.array(temp_aux_embed_dists_list).T
+							if plot_update_step != 0:
+								temp_aux_loss_episode_by_update_by_seed = (
+									np.array(temp_ssl_loss_list).transpose(1, 2, 0)
+								)
+							else:
+								temp_aux_loss_episode_by_update_by_seed = None
 
-							# Visualize average episode rewards
+							# Save to data dictionary
+							data_dict[plot_update_step] = {
+								"rewards_episode_by_seed":temp_rewards_episode_by_seed,
+								"actor_enc_dists_step_by_seed":temp_actor_enc_dists_step_by_seed,
+								"aux_enc_dists_step_by_seed":temp_aux_enc_dists_step_by_seed,
+								"aux_loss_episode_by_update_by_seed":temp_aux_loss_episode_by_update_by_seed,
+							}
+
+						# Plot data
+						plt.rcParams.update({'font.size':16})
+						x_label_pad = 14
+						y_label_pad = 16
+						for smooth_rewards in [True, False]:
 							rewards_min_y = float("inf")
 							rewards_max_y = float("-inf")
-							fig, axes = plt.subplots(2, 1, figsize=(8,6))
-							fig.subplots_adjust(hspace=0.3)
+							fig, axes = plt.subplots(2, 2, figsize=(16, 8))
+							fig.subplots_adjust(hspace=0.35, wspace=0.22)
 							for plot_update_step in plot_update_steps:
-								print(
-									f"Loading data for {domain} {task}, {aux_model}, "+
-									f"{color_mode}, {sub_dir}, {plot_update_step} aux updates, "+
-									f"smoothed={gaussian_filter}"
-								)
 
-								# Get results for all seeds for plot_update_step value
-								temp_reward_list = []
-								temp_ssl_loss_list = []
-								temp_embed_dists_list = []
-								for seed_i_result_file in seed_results_files:
-									seed_i_results = torch.load(seed_i_result_file, weights_only=False)
-									temp_reward_list.append(seed_i_results["episode_rewards"][plot_update_step])
-									temp_embed_dists_list.append(seed_i_results["embed_dists"][plot_update_step])
-									if plot_update_step != 0:
-										temp_ssl_loss_list.append(
-											seed_i_results["aux_losses"][plot_update_step]
-										)
+								# Get data for plot update step
+								plot_data = data_dict[plot_update_step]
+								rewards_episode_by_seed = plot_data["rewards_episode_by_seed"]
+								actor_enc_dists_step_by_seed = plot_data["actor_enc_dists_step_by_seed"]
+								aux_enc_dists_step_by_seed = plot_data["aux_enc_dists_step_by_seed"]
+								aux_loss_episode_by_update_by_seed = plot_data["aux_loss_episode_by_update_by_seed"]
 
-								# Calculate average rewards across seeds
-								rewards_episode_by_seed = np.array(temp_reward_list).T
+								# Calculate average reward and standard deviation across seeds
 								rewards_episode_by_avg_seed = np.mean(rewards_episode_by_seed, axis=1)
-								
-								# Calculate standard deviation of rewards across seeds
-								rewards_stddev_avg_seed = np.std(rewards_episode_by_seed, axis=1)
+								rewards_episode_by_stddev_seed = np.std(rewards_episode_by_seed, axis=1)
 
-								# Calculate confidence interval
+								# Calculate median reward and 80% Monte Carlo CI across seeds
+								rewards_episode_by_median_seed = np.median(rewards_episode_by_seed, axis=1)
 								n_seeds = rewards_episode_by_seed.shape[1]
 								lower_bound_seed_idx = round(n_seeds * 0.1)
 								upper_bound_seed_idx = round(n_seeds * 0.9)
@@ -100,11 +140,12 @@ if __name__ == "__main__":
 								rewards_episode_lower_bound = rewards_episode_by_seed_sorted[:, lower_bound_seed_idx]
 								rewards_episode_upper_bound = rewards_episode_by_seed_sorted[:, upper_bound_seed_idx]
 
+								# Calculate average embedding distances across seeds
+								actor_enc_dists_step_by_avg_seed = np.mean(actor_enc_dists_step_by_seed, axis=1)
+								aux_enc_dists_step_by_avg_seed = np.mean(aux_enc_dists_step_by_seed, axis=1)
+
 								# Calculate average auxiliary task loss across seeds and steps
 								if plot_update_step != 0:
-									aux_loss_episode_by_update_by_seed = (
-										np.array(temp_ssl_loss_list).transpose(1, 2, 0)
-									)
 									aux_loss_episode_by_update_by_avg_seed = np.mean(
 										aux_loss_episode_by_update_by_seed, axis=-1,
 									)
@@ -112,46 +153,44 @@ if __name__ == "__main__":
 										aux_loss_episode_by_update_by_avg_seed, axis=-1
 									)
 
-									# # Expand aux loss array to account for action repeats
-									# aux_loss_episode_by_update_by_avg_seed_expanded = np.repeat(
-									# 	aux_loss_episode_by_update_by_avg_seed,
-									# 	repeats=action_repeats,
-									# 	axis=1,
-									# )
-									# total_updates_per_episode = (
-									# 	aux_loss_episode_by_update_by_avg_seed_expanded.shape[-1]
-									# )
-									# assert (total_updates_per_episode / steps_per_episode == plot_update_step)
-
 								# Update plotting parameters
 								n_episodes = len(rewards_episode_by_avg_seed)
+								n_steps = len(actor_enc_dists_step_by_avg_seed)
 								rewards_min_y = min(rewards_min_y, np.min(rewards_episode_by_avg_seed))
 								rewards_max_y = max(rewards_max_y, np.max(rewards_episode_by_avg_seed))
 								plot_color = color_dict[plot_update_step]
 
-								# Smooth values (if applicable)
-								if gaussian_filter:
+								# Smooth time series
+								actor_enc_dists_step_by_avg_seed = gaussian_filter1d(
+									actor_enc_dists_step_by_avg_seed,
+									enc_dist_gaussian_filter_stddev,
+								)
+								aux_enc_dists_step_by_avg_seed = gaussian_filter1d(
+									aux_enc_dists_step_by_avg_seed,
+									enc_dist_gaussian_filter_stddev,
+								)
+								if plot_update_step != 0:
+									aux_loss_episode_by_avg_update_by_avg_seed = gaussian_filter1d(
+										aux_loss_episode_by_avg_update_by_avg_seed,
+										aux_loss_gaussian_filter_stddev,
+									)
+								if smooth_rewards:
 									rewards_episode_by_avg_seed = gaussian_filter1d(
 										rewards_episode_by_avg_seed,
-										gaussian_filter_stddev,
+										rewards_gaussian_filter_stddev,
 									)
-									if plot_update_step != 0:
-										aux_loss_episode_by_avg_update_by_avg_seed = gaussian_filter1d(
-											aux_loss_episode_by_avg_update_by_avg_seed,
-											gaussian_filter_stddev,
-										)
 
 								# Plot rewards
 								sns.lineplot(
 									x=range(n_episodes),
 									y=rewards_episode_by_avg_seed,
 									label=plot_update_step,
-									ax=axes[0],
+									ax=axes[0, 0],
 									color=plot_color,
 									legend=False,
 								)
 								if plot_CI:
-									axes[0].fill_between(
+									axes[0, 0].fill_between(
 										x=range(n_episodes),
 										y1=rewards_episode_lower_bound,
 										y2=rewards_episode_upper_bound,
@@ -159,10 +198,10 @@ if __name__ == "__main__":
 										color=plot_color,
 									)
 								if plot_stddev:
-									axes[0].fill_between(
+									axes[0, 0].fill_between(
 										x=range(n_episodes),
-										y1=rewards_episode_by_avg_seed - rewards_stddev_avg_seed,
-										y2=rewards_episode_by_avg_seed + rewards_stddev_avg_seed,
+										y1=rewards_episode_by_avg_seed - rewards_episode_by_stddev_seed,
+										y2=rewards_episode_by_avg_seed + rewards_episode_by_stddev_seed,
 										alpha=0.2,
 										linestyle="dashed",
 										color=plot_color,
@@ -174,17 +213,41 @@ if __name__ == "__main__":
 										x=range(n_episodes),
 										y=aux_loss_episode_by_avg_update_by_avg_seed,
 										label=plot_update_step,
-										ax=axes[1],
+										ax=axes[1, 0],
 										legend=False,
 										color=plot_color,
 									)
+								
+								# Plot embedding distances
+								sns.lineplot(
+									x=range(n_steps),
+									y=actor_enc_dists_step_by_avg_seed,
+									label=plot_update_step,
+									ax=axes[0, 1],
+									legend=False,
+									color=plot_color,
+								)
+								sns.lineplot(
+									x=range(n_steps),
+									y=aux_enc_dists_step_by_avg_seed,
+									label=plot_update_step,
+									ax=axes[1, 1],
+									legend=False,
+									color=plot_color,
+								)
 
 							# Format plot
-							axes[0].set_ylim(0, int(rewards_max_y * 1.05))
-							axes[0].set_ylabel("Avg Reward")
-							axes[1].set_ylabel("Avg Auxiliary Loss")
-							for i in range(len(axes)):
-								axes[i].set_xlabel("Episode")
+							axes[0, 0].set_ylim(0, int(rewards_max_y * 1.05))
+							axes[0, 0].set_ylabel("Avg Reward", labelpad=y_label_pad)
+							axes[1, 0].set_ylabel("Avg Auxiliary Loss", labelpad=y_label_pad)
+							axes[0, 1].set_ylabel("Avg Actor Embed \nL2 Distance", labelpad=y_label_pad)
+							axes[1, 1].set_ylabel("Avg Aux Embed \nL2 Distance", labelpad=y_label_pad)
+							for i in range(axes.shape[0]):
+								axes[i, 0].set_xlabel("Episode", labelpad=x_label_pad)
+								axes[i, 1].set_xlabel("Env Step", labelpad=x_label_pad)
+								axes[i, 1].xaxis.set_major_formatter(
+									ticker.StrMethodFormatter("{x:,.0f}")
+								)
 							# Create legend
 							handles, labels = fig.axes[0].get_legend_handles_labels()
 							fig.legend(
@@ -199,7 +262,8 @@ if __name__ == "__main__":
 									f"Average Episode Reward for {domain.title()} {task.title()}" +
 									f"\nMode: {color_mode}; # seeds: {n_seeds}"
 								)
-							suffix = "_smoothed" if gaussian_filter else ""
+							fig.align_ylabels()
+							suffix = "_smoothed_rewards" if smooth_rewards else ""
 							fig_name = f"avg_episode_reward_{domain.title()}_{task.title()}_mode_{color_mode}_{n_seeds}_seeds{suffix}.png"
 							save_path = os.path.join(results_dir, fig_name)
 							fig.savefig(save_path, bbox_inches="tight")
