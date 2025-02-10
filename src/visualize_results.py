@@ -83,13 +83,14 @@ if __name__ == "__main__":
 									)
 								# Get encoder distances
 								temp_actor_embed_dists_list.append([
-									x.item() for x in 
+									x.item() if isinstance(x, torch.Tensor) else x for x in 
 									seed_i_results["embed_dists"][plot_update_step]["actor_enc"]
 								])
 								temp_aux_embed_dists_list.append([
-									x.item() for x in 
+									x.item() if isinstance(x, torch.Tensor) else x for x in 
 									seed_i_results["embed_dists"][plot_update_step]["aux_enc"]
 								])
+
 							# Concatenate across seeds
 							temp_rewards_episode_by_seed = np.array(temp_reward_list).T
 							temp_actor_enc_dists_step_by_seed = np.array(temp_actor_embed_dists_list).T
