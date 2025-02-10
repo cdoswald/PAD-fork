@@ -3,7 +3,7 @@ CUDA_VISIBLE_DEVICES=0 python3 src/train.py \
     --task_name run \
     --action_repeat 4 \
     --mode train \
-    --train_steps 150000 \
+    --train_steps 500000 \
     --use_inv \
     --num_shared_layers 8 \
     --seed 0 \
