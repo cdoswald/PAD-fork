@@ -1,8 +1,10 @@
 from glob import glob
+import os
+import time
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-import os
 import seaborn as sns
 from scipy.ndimage import gaussian_filter1d
 import torch
@@ -46,6 +48,7 @@ if __name__ == "__main__":
 		},
 	]
 
+	start_time = time.strftime('%Y-%m-%d %H:%M:%S')
 	for params in domain_task_list:
 		domain = params["domain"]
 		task = params["task"]
@@ -249,6 +252,9 @@ if __name__ == "__main__":
 								axes[i, 1].xaxis.set_major_formatter(
 									ticker.StrMethodFormatter("{x:,.0f}")
 								)
+								axes[i, 1].yaxis.set_major_formatter(
+									ticker.StrMethodFormatter("{x:,.0f}")
+								)
 							# Create legend
 							handles, labels = fig.axes[0].get_legend_handles_labels()
 							fig.legend(
@@ -268,3 +274,7 @@ if __name__ == "__main__":
 							fig_name = f"avg_episode_reward_{domain.title()}_{task.title()}_mode_{color_mode}_{n_seeds}_seeds{suffix}.png"
 							save_path = os.path.join(results_dir, fig_name)
 							fig.savefig(save_path, bbox_inches="tight")
+
+	# Print start and end time
+	end_time = time.strftime('%Y-%m-%d %H:%M:%S')
+	print(f"Start time: {start_time} \nEnd time: {end_time}")
