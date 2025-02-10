@@ -108,8 +108,8 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 				orig_enc_aux = orig_agent.ss_encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
 				updated_enc_aux = ep_agent.ss_encoder(next_obs_batch, detach=True).detach().cpu()
 
-				actor_enc_dist = torch.norm(orig_enc_actor - updated_enc_actor, p=2) # L2 norm
-				aux_enc_dist = torch.norm(orig_enc_aux - updated_enc_aux, p=2)
+				actor_enc_dist = torch.norm(orig_enc_actor - updated_enc_actor, p=2).item() # L2 norm
+				aux_enc_dist = torch.norm(orig_enc_aux - updated_enc_aux, p=2).item()
 
 				embedding_dists["actor_enc"].append(actor_enc_dist)
 				embedding_dists["aux_enc"].append(aux_enc_dist)
