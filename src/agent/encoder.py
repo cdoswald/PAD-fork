@@ -58,6 +58,18 @@ class PixelEncoder(nn.Module):
 		self.fc = nn.Linear(num_filters * out_dim * out_dim, self.feature_dim)
 		self.ln = nn.LayerNorm(self.feature_dim)
 
+	def forward_conv_n_layers(self, obs, n_layers, detach=False):
+		obs = self.preprocess(obs)
+		conv = torch.relu(self.convs[0](obs))
+
+		for i in range(1, n_layers):
+			conv = torch.relu(self.convs[i](conv))
+			if i == n_layers-1 and detach:
+				conv = conv.detach()
+
+		h = conv.view(conv.size(0), -1)
+		return h
+
 	def forward_conv(self, obs, detach=False):
 		obs = self.preprocess(obs)
 		conv = torch.relu(self.convs[0](obs))
@@ -84,6 +96,8 @@ class PixelEncoder(nn.Module):
 			n = self.num_layers
 		for i in range(n):
 			tie_weights(src=source.convs[i], trg=self.convs[i])
+
+
 
 
 def make_encoder(

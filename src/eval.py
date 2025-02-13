@@ -17,7 +17,7 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 	"""Evaluate an agent, optionally adapt using PAD"""
 	episode_rewards = []
 	all_losses = []
-	embedding_dists = {"actor_enc":[], "aux_enc":[]}
+	embedding_dists = {"actor_enc":[], "aux_enc":[], "shared_conv_enc":[]}
 
 	validate_frame_sync_iter = 0
 	validate_frame_sync_dir = os.path.join(args.work_dir, "frame_sync_validation")
@@ -101,7 +101,8 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 					batch_size=args.pad_batch_size
 				)
 
-				# Calculate distance between original and eval obs embeddings 
+				# Calculate distance between original and evaluation obs embeddings
+				# (using all layers in respective encoders, including non-shared conv, linear, and layernorm)
 				orig_enc_actor = orig_agent.actor.encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
 				updated_enc_actor = ep_agent.actor.encoder(next_obs_batch, detach=True).detach().cpu()
 
@@ -113,6 +114,60 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 
 				embedding_dists["actor_enc"].append(actor_enc_dist)
 				embedding_dists["aux_enc"].append(aux_enc_dist)
+
+				# Calculate distance between original and evaluation obs embeddings
+				# (using only the layers shared by all three of the actor, critic, and aux encoders)
+				orig_enc_actor_shared_only = orig_agent.actor.encoder.forward_conv_n_layers(
+					orig_env_next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+				updated_enc_actor_shared_only = ep_agent.actor.encoder.forward_conv_n_layers(
+					next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+
+				orig_enc_critic_shared_only = orig_agent.critic.encoder.forward_conv_n_layers(
+					orig_env_next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+				updated_enc_critic_shared_only = ep_agent.critic.encoder.forward_conv_n_layers(
+					next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+
+				orig_enc_aux_shared_only = orig_agent.ss_encoder.forward_conv_n_layers(
+					orig_env_next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+				updated_enc_aux_shared_only = ep_agent.ss_encoder.forward_conv_n_layers(
+					next_obs_batch,
+					n_layers=args.num_shared_layers,
+					detach=True,
+				).detach().cpu()
+
+				actor_enc_dist_shared_only = torch.norm(
+					orig_enc_actor_shared_only - updated_enc_actor_shared_only,
+					p=2
+				).item()
+				critic_enc_dist_shared_only = torch.norm(
+					orig_enc_critic_shared_only - updated_enc_critic_shared_only,
+					p=2
+				).item()
+				aux_enc_dist_shared_only = torch.norm(
+					orig_enc_aux_shared_only - updated_enc_aux_shared_only,
+					p=2
+				).item()
+
+				assert abs(actor_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
+				assert abs(actor_enc_dist_shared_only - critic_enc_dist_shared_only) < 1e-10
+				assert abs(critic_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
+
+				embedding_dists["shared_conv_enc"].append(actor_enc_dist_shared_only)
 
 			# Reset model weights between environment steps (if applicable)
 			if args.pad_reset_agent == "ss_updates":
@@ -269,19 +324,127 @@ if __name__ == '__main__':
 
 # colors = torch.load(f"src/env/data/color_easy.pt")
 
-# class TestArgs():
+	# import argparse
+	# import numpy as np
 
-# 	def __init__(self):
-# 		pass
+	# def parse_args():
+	# 	# Manually create a Namespace object with the default values
+	# 	args = argparse.Namespace()
 
+	# 	# environment
+	# 	args.domain_name = 'cartpole'
+	# 	args.task_name = 'swingup'
+	# 	args.frame_stack = 3
+	# 	args.action_repeat = 8
+	# 	args.episode_length = 1000
+	# 	args.mode = 'color_easy'
+		
+	# 	# agent
+	# 	args.init_steps = 1000
+	# 	args.train_steps = 500000
+	# 	args.batch_size = 128
+	# 	args.hidden_dim = 1024
 
-# args = TestArgs()
-# args.domain_name = "cartpole"
-# args.task_name = "swingup"
-# args.seed = 1
-# args.episode_length = 1000
-# args.action_repeat = 8
-# args.mode = "color_hard"
+	# 	# eval
+	# 	args.save_freq = 100000
+	# 	args.eval_freq = 100000
+	# 	args.eval_episodes = 10
+
+	# 	# critic
+	# 	args.critic_lr = 1e-3
+	# 	args.critic_beta = 0.9
+	# 	args.critic_tau = 0.01
+	# 	args.critic_target_update_freq = 2
+
+	# 	# actor
+	# 	args.actor_lr = 1e-3
+	# 	args.actor_beta = 0.9
+	# 	args.actor_log_std_min = -10
+	# 	args.actor_log_std_max = 2
+	# 	args.actor_update_freq = 2
+
+	# 	# encoder
+	# 	args.encoder_feature_dim = 100
+	# 	args.encoder_lr = 1e-3
+	# 	args.encoder_tau = 0.05
+
+	# 	# self-supervision
+	# 	args.use_rot = False
+	# 	args.use_inv = True
+	# 	args.use_curl = False
+	# 	args.ss_lr = 1e-3
+	# 	args.ss_update_freq = 2
+	# 	args.num_layers = 11
+	# 	args.num_shared_layers = 8
+	# 	args.num_filters = 32
+	# 	args.curl_latent_dim = 128
+	# 	args.ss_update_quantities = "1, 2, 4"
+
+	# 	# sac
+	# 	args.discount = 0.99
+	# 	args.init_temperature = 0.1
+	# 	args.alpha_lr = 1e-4
+	# 	args.alpha_beta = 0.5
+
+	# 	# misc
+	# 	args.seed = 0
+	# 	args.work_dir = "logs/cartpole_swingup/inv/0"
+	# 	args.save_model = False
+	# 	args.save_video = False
+
+	# 	# test
+	# 	args.pad_checkpoint = 500000
+	# 	args.pad_batch_size = 32
+	# 	args.pad_num_episodes = 100
+	# 	args.pad_reset_agent = 'episode'
+		
+	# 	return args
+
+	# args = parse_args()
+	# main(args)
+
+	# atol = 1e-6
+	# check_n_layers = 30
+	# for i in range(check_n_layers):
+	# 	all_match = True
+	# 	params_actor = list(agent.actor.parameters())[i]
+	# 	params_critic = list(agent.critic.parameters())[i]
+	# 	params_aux = list(agent.ss_encoder.parameters())[i]
+	# 	if not torch.allclose(params_actor, params_critic, atol=atol):
+	# 		all_match = False
+	# 		print(f"Actor and critic layer {i} do not match.")
+	# 	if not torch.allclose(params_critic, params_aux, atol=atol):
+	# 		all_match = False
+	# 		print(f"Critic and aux layer {i} do not match.")
+	# 	if not torch.allclose(params_actor, params_aux, atol=atol):
+	# 		all_match = False
+	# 		print(f"Actor and aux layer {i} do not match.")
+	# 	if all_match:
+	# 		print(f"All params for layer {i} match.")
+
+	# atol = 1e-6
+	# check_n_layers = 30
+	# for i in range(check_n_layers):
+	# 	all_match = True
+	# 	params_actor = list(agent.actor.encoder.parameters())[i]
+	# 	params_critic = list(agent.critic.encoder.parameters())[i]
+	# 	if not torch.allclose(params_actor, params_critic, atol=atol):
+	# 		all_match = False
+	# 		print(f"Actor and critic layer {i} do not match.")
+	# 	if all_match:
+	# 		print(f"All params for layer {i} match.")
+
+	# atol = 1e-6
+	# check_n_layers = 30
+	# for i in range(check_n_layers):
+	# 	all_match = True
+	# 	params_actor = list(agent.actor.parameters())[i]
+	# 	params_critic = list(agent.critic.parameters())[i]
+	# 	if not torch.allclose(params_actor, params_critic, atol=atol):
+	# 		all_match = False
+	# 		print(f"Actor and critic layer {i} do not match.")
+	# 	if all_match:
+	# 		print(f"All params for layer {i} match.")
 
 # env1 = make_pad_env(
 # 	args.domain_name,

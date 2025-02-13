@@ -43,7 +43,7 @@ if __name__ == "__main__":
 		{
 			"domain":"cheetah",
 			"task":"run",
-			"aux_models": ["inv"],
+			"aux_models": ["inv", "rot"],
 			"color_modes":["color_easy"],
 		},
 	]
