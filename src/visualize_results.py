@@ -74,7 +74,7 @@ if __name__ == "__main__":
 							temp_reward_list = []
 							temp_ssl_loss_list = []
 							temp_actor_embed_dists_list = []
-							temp_aux_embed_dists_list = []
+							temp_shared_embed_dists_list = []
 							for seed_i_result_file in seed_results_files:
 								seed_i_results = torch.load(seed_i_result_file, weights_only=False)
 								# Get episode rewards
@@ -89,15 +89,15 @@ if __name__ == "__main__":
 									x.item() if isinstance(x, torch.Tensor) else x for x in 
 									seed_i_results["embed_dists"][plot_update_step]["actor_enc"]
 								])
-								temp_aux_embed_dists_list.append([
+								temp_shared_embed_dists_list.append([
 									x.item() if isinstance(x, torch.Tensor) else x for x in 
-									seed_i_results["embed_dists"][plot_update_step]["aux_enc"]
+									seed_i_results["embed_dists"][plot_update_step]["shared_conv_enc"]
 								])
 
 							# Concatenate across seeds
 							temp_rewards_episode_by_seed = np.array(temp_reward_list).T
 							temp_actor_enc_dists_step_by_seed = np.array(temp_actor_embed_dists_list).T
-							temp_aux_enc_dists_step_by_seed = np.array(temp_aux_embed_dists_list).T
+							temp_shared_enc_dists_step_by_seed = np.array(temp_shared_embed_dists_list).T
 							if plot_update_step != 0:
 								temp_aux_loss_episode_by_update_by_seed = (
 									np.array(temp_ssl_loss_list).transpose(1, 2, 0)
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 							data_dict[plot_update_step] = {
 								"rewards_episode_by_seed":temp_rewards_episode_by_seed,
 								"actor_enc_dists_step_by_seed":temp_actor_enc_dists_step_by_seed,
-								"aux_enc_dists_step_by_seed":temp_aux_enc_dists_step_by_seed,
+								"shared_enc_dists_step_by_seed":temp_shared_enc_dists_step_by_seed,
 								"aux_loss_episode_by_update_by_seed":temp_aux_loss_episode_by_update_by_seed,
 							}
 
@@ -121,14 +121,14 @@ if __name__ == "__main__":
 							rewards_min_y = float("inf")
 							rewards_max_y = float("-inf")
 							fig, axes = plt.subplots(2, 2, figsize=(16, 8))
-							fig.subplots_adjust(hspace=0.35, wspace=0.22)
+							fig.subplots_adjust(hspace=0.35, wspace=0.25)
 							for plot_update_step in plot_update_steps:
 
 								# Get data for plot update step
 								plot_data = data_dict[plot_update_step]
 								rewards_episode_by_seed = plot_data["rewards_episode_by_seed"]
 								actor_enc_dists_step_by_seed = plot_data["actor_enc_dists_step_by_seed"]
-								aux_enc_dists_step_by_seed = plot_data["aux_enc_dists_step_by_seed"]
+								shared_enc_dists_step_by_seed = plot_data["shared_enc_dists_step_by_seed"]
 								aux_loss_episode_by_update_by_seed = plot_data["aux_loss_episode_by_update_by_seed"]
 
 								# Calculate average reward and standard deviation across seeds
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
 								# Calculate average embedding distances across seeds
 								actor_enc_dists_step_by_avg_seed = np.mean(actor_enc_dists_step_by_seed, axis=1)
-								aux_enc_dists_step_by_avg_seed = np.mean(aux_enc_dists_step_by_seed, axis=1)
+								shared_enc_dists_step_by_avg_seed = np.mean(shared_enc_dists_step_by_seed, axis=1)
 
 								# Calculate average auxiliary task loss across seeds and steps
 								if plot_update_step != 0:
@@ -169,8 +169,8 @@ if __name__ == "__main__":
 									actor_enc_dists_step_by_avg_seed,
 									enc_dist_gaussian_filter_stddev,
 								)
-								aux_enc_dists_step_by_avg_seed = gaussian_filter1d(
-									aux_enc_dists_step_by_avg_seed,
+								shared_enc_dists_step_by_avg_seed = gaussian_filter1d(
+									shared_enc_dists_step_by_avg_seed,
 									enc_dist_gaussian_filter_stddev,
 								)
 								if plot_update_step != 0:
@@ -231,9 +231,18 @@ if __name__ == "__main__":
 									legend=False,
 									color=plot_color,
 								)
+
+								# Adjust shared encoder embeddings scale
+								if sub_dir == "reset_none":
+									plot_shared_enc_dists = shared_enc_dists_step_by_avg_seed / 1.0e+9
+									plot_shared_enc_dists_suffix = "(billions)"
+								else:
+									plot_shared_enc_dists = shared_enc_dists_step_by_avg_seed / 1.0e+6
+									plot_shared_enc_dists_suffix = "(millions)"
+
 								sns.lineplot(
 									x=range(n_steps),
-									y=aux_enc_dists_step_by_avg_seed,
+									y=plot_shared_enc_dists,
 									label=plot_update_step,
 									ax=axes[1, 1],
 									legend=False,
@@ -245,7 +254,7 @@ if __name__ == "__main__":
 							axes[0, 0].set_ylabel("Avg Reward", labelpad=y_label_pad)
 							axes[1, 0].set_ylabel("Avg Auxiliary Loss", labelpad=y_label_pad)
 							axes[0, 1].set_ylabel("Avg Actor Embed \nL2 Distance", labelpad=y_label_pad)
-							axes[1, 1].set_ylabel("Avg Aux Embed \nL2 Distance", labelpad=y_label_pad)
+							axes[1, 1].set_ylabel(f"Avg Shared Embed \nL2 Distance {plot_shared_enc_dists_suffix}", labelpad=y_label_pad)
 							for i in range(axes.shape[0]):
 								axes[i, 0].set_xlabel("Episode", labelpad=x_label_pad)
 								axes[i, 1].set_xlabel("Env Step", labelpad=x_label_pad)
