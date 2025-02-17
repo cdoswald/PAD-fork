@@ -280,7 +280,10 @@ if __name__ == "__main__":
 								)
 							fig.align_ylabels()
 							suffix = "_smoothed_rewards" if smooth_rewards else ""
-							fig_name = f"avg_episode_reward_{domain.title()}_{task.title()}_mode_{color_mode}_{n_seeds}_seeds{suffix}.png"
+							fig_name = (
+								f"avg_episode_reward_{domain.title()}_{task.title()}"+
+								f"_{aux_model}_{sub_dir}_mode_{color_mode}_{n_seeds}_seeds{suffix}.png"
+							)
 							save_path = os.path.join(results_dir, fig_name)
 							fig.savefig(save_path, bbox_inches="tight")
 
