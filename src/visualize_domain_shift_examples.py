@@ -52,4 +52,7 @@ if __name__ == "__main__":
     for i in range(len(axes)):
         axes[i].set_xticks([])
         axes[i].set_yticks([])
-    fig.savefig(os.path.join(savedir, "train_color_easy_hard_domain_shifts.png"), bbox_inches="tight")
+    fig.savefig(
+        os.path.join(savedir, "train_color_easy_hard_domain_shifts.png"),
+        bbox_inches="tight"
+    )

@@ -257,7 +257,7 @@ if __name__ == "__main__":
 							axes[1, 1].set_ylabel(f"Avg Shared Embed \nL2 Distance {plot_shared_enc_dists_suffix}", labelpad=y_label_pad)
 							for i in range(axes.shape[0]):
 								axes[i, 0].set_xlabel("Episode", labelpad=x_label_pad)
-								axes[i, 1].set_xlabel("Env Step", labelpad=x_label_pad)
+								axes[i, 1].set_xlabel("Action Step", labelpad=x_label_pad)
 								axes[i, 1].xaxis.set_major_formatter(
 									ticker.StrMethodFormatter("{x:,.0f}")
 								)

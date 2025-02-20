@@ -30,6 +30,7 @@ if __name__ == "__main__":
         "logs/cartpole_swingup/inv/0",
         "logs/cartpole_swingup/rot/0",
         "logs/cheetah_run/inv/0",
+        "logs/cheetah_run/rot/0",
     ]
 
     for work_dir in work_dirs:
@@ -38,7 +39,7 @@ if __name__ == "__main__":
         figures_dir = os.path.join(frames_sync_dir, "figures")
         os.makedirs(figures_dir, exist_ok=True)
 
-        for file in frames_sync_files[::1]:
+        for file in frames_sync_files[::4]:
             with open(file, "rb") as io:
                 data = pickle.load(io)
             fig = show_all_frames(data)

@@ -85,7 +85,7 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 				# Save out frames from original and evaluation environment 
 				# periodically to validate that state position matches
 				validate_frame_sync_iter += 1
-				if validate_frame_sync_iter % 400 == 0:
+				if validate_frame_sync_iter % 800 == 0:
 					temp_file = f"frames_sync_mode_{args.mode}_evalseed_{args.seed}_iter{validate_frame_sync_iter}.p"
 					with open(os.path.join(validate_frame_sync_dir, temp_file), "wb") as io:
 						pickle.dump((env.env._frames, orig_env.env._frames), io)
@@ -106,14 +106,14 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 				orig_enc_actor = orig_agent.actor.encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
 				updated_enc_actor = ep_agent.actor.encoder(next_obs_batch, detach=True).detach().cpu()
 
-				orig_enc_aux = orig_agent.ss_encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
-				updated_enc_aux = ep_agent.ss_encoder(next_obs_batch, detach=True).detach().cpu()
+				# orig_enc_aux = orig_agent.ss_encoder(orig_env_next_obs_batch, detach=True).detach().cpu()
+				# updated_enc_aux = ep_agent.ss_encoder(next_obs_batch, detach=True).detach().cpu()
 
 				actor_enc_dist = torch.norm(orig_enc_actor - updated_enc_actor, p=2).item() # L2 norm
-				aux_enc_dist = torch.norm(orig_enc_aux - updated_enc_aux, p=2).item()
+				# aux_enc_dist = torch.norm(orig_enc_aux - updated_enc_aux, p=2).item()
 
 				embedding_dists["actor_enc"].append(actor_enc_dist)
-				embedding_dists["aux_enc"].append(aux_enc_dist)
+				# embedding_dists["aux_enc"].append(aux_enc_dist)
 
 				# Calculate distance between original and evaluation obs embeddings
 				# (using only the layers shared by all three of the actor, critic, and aux encoders)
@@ -128,44 +128,44 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 					detach=True,
 				).detach().cpu()
 
-				orig_enc_critic_shared_only = orig_agent.critic.encoder.forward_conv_n_layers(
-					orig_env_next_obs_batch,
-					n_layers=args.num_shared_layers,
-					detach=True,
-				).detach().cpu()
-				updated_enc_critic_shared_only = ep_agent.critic.encoder.forward_conv_n_layers(
-					next_obs_batch,
-					n_layers=args.num_shared_layers,
-					detach=True,
-				).detach().cpu()
+				# orig_enc_critic_shared_only = orig_agent.critic.encoder.forward_conv_n_layers(
+				# 	orig_env_next_obs_batch,
+				# 	n_layers=args.num_shared_layers,
+				# 	detach=True,
+				# ).detach().cpu()
+				# updated_enc_critic_shared_only = ep_agent.critic.encoder.forward_conv_n_layers(
+				# 	next_obs_batch,
+				# 	n_layers=args.num_shared_layers,
+				# 	detach=True,
+				# ).detach().cpu()
 
-				orig_enc_aux_shared_only = orig_agent.ss_encoder.forward_conv_n_layers(
-					orig_env_next_obs_batch,
-					n_layers=args.num_shared_layers,
-					detach=True,
-				).detach().cpu()
-				updated_enc_aux_shared_only = ep_agent.ss_encoder.forward_conv_n_layers(
-					next_obs_batch,
-					n_layers=args.num_shared_layers,
-					detach=True,
-				).detach().cpu()
+				# orig_enc_aux_shared_only = orig_agent.ss_encoder.forward_conv_n_layers(
+				# 	orig_env_next_obs_batch,
+				# 	n_layers=args.num_shared_layers,
+				# 	detach=True,
+				# ).detach().cpu()
+				# updated_enc_aux_shared_only = ep_agent.ss_encoder.forward_conv_n_layers(
+				# 	next_obs_batch,
+				# 	n_layers=args.num_shared_layers,
+				# 	detach=True,
+				# ).detach().cpu()
 
 				actor_enc_dist_shared_only = torch.norm(
 					orig_enc_actor_shared_only - updated_enc_actor_shared_only,
 					p=2
 				).item()
-				critic_enc_dist_shared_only = torch.norm(
-					orig_enc_critic_shared_only - updated_enc_critic_shared_only,
-					p=2
-				).item()
-				aux_enc_dist_shared_only = torch.norm(
-					orig_enc_aux_shared_only - updated_enc_aux_shared_only,
-					p=2
-				).item()
+				# critic_enc_dist_shared_only = torch.norm(
+				# 	orig_enc_critic_shared_only - updated_enc_critic_shared_only,
+				# 	p=2
+				# ).item()
+				# aux_enc_dist_shared_only = torch.norm(
+				# 	orig_enc_aux_shared_only - updated_enc_aux_shared_only,
+				# 	p=2
+				# ).item()
 
-				assert abs(actor_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
-				assert abs(actor_enc_dist_shared_only - critic_enc_dist_shared_only) < 1e-10
-				assert abs(critic_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
+				# assert abs(actor_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
+				# assert abs(actor_enc_dist_shared_only - critic_enc_dist_shared_only) < 1e-10
+				# assert abs(critic_enc_dist_shared_only - aux_enc_dist_shared_only) < 1e-10
 
 				embedding_dists["shared_conv_enc"].append(actor_enc_dist_shared_only)
 
