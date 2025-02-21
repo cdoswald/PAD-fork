@@ -1,5 +1,6 @@
 from glob import glob
 import os
+import pickle
 import time
 
 import matplotlib.pyplot as plt
@@ -112,6 +113,11 @@ if __name__ == "__main__":
 								"shared_enc_dists_step_by_seed":temp_shared_enc_dists_step_by_seed,
 								"aux_loss_episode_by_update_by_seed":temp_aux_loss_episode_by_update_by_seed,
 							}
+
+						# Save out formatted data (to create aggregated tables)
+						formatted_data_file_name = f"formatted_data_{domain}_{task}_{aux_model}_{sub_dir}_{color_mode}.p"
+						with open(os.path.join(results_dir, formatted_data_file_name), "wb") as io:
+							torch.save(data_dict, io)
 
 						# Plot data
 						plt.rcParams.update({'font.size':16})
