@@ -292,6 +292,7 @@ if __name__ == "__main__":
 							)
 							save_path = os.path.join(results_dir, fig_name)
 							fig.savefig(save_path, bbox_inches="tight")
+							plt.close()
 
 	# Print start and end time
 	end_time = time.strftime('%Y-%m-%d %H:%M:%S')
