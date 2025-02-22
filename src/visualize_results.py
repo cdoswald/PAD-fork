@@ -39,7 +39,7 @@ if __name__ == "__main__":
 			"domain":"cartpole",
 			"task":"swingup",
 			"aux_models": ["inv", "rot"],
-			"color_modes":["color_easy"],
+			"color_modes":["color_easy", "color_hard"],
 		},
 		{
 			"domain":"cheetah",
