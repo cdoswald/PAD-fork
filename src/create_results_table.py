@@ -31,8 +31,9 @@ if __name__ == "__main__":
 
 	start_time = time.strftime('%Y-%m-%d %H:%M:%S')
 	for main_task in main_tasks:
-		all_data_dict = {}
 		for color_mode in color_modes:
+
+			all_data_dict = {}
 			for aux_task in aux_tasks:
 				for reset_mode in reset_agent_modes:
 
@@ -52,18 +53,17 @@ if __name__ == "__main__":
 					
 					# Save data series with table header
 					formatted_table_header = (
-						header_format_dict[color_mode],
 						header_format_dict[aux_task],
 						header_format_dict[reset_mode],
 					)
 					all_data_dict[formatted_table_header] = aux_step_data_dict
 
-		# Create LaTeX table
-		table_headers = pd.MultiIndex.from_tuples(all_data_dict.keys())
-		df = pd.DataFrame(all_data_dict.values(), index=table_headers).T
-		latex_table = df.to_latex(index=False, escape=False, multirow=True)
+			# Create LaTeX table
+			table_headers = pd.MultiIndex.from_tuples(all_data_dict.keys())
+			df = pd.DataFrame(all_data_dict.values(), index=table_headers).T
+			latex_table = df.to_latex(index=True, escape=False, multirow=True)
 
-		# Save LaTeX table
-		table_file = f"results_table_{main_task}.txt"
-		with open(os.path.join(save_tables_dir, table_file), "w") as io:
-			io.write(latex_table)
+			# Save LaTeX table
+			table_file = f"results_table_{main_task}_{color_mode}.txt"
+			with open(os.path.join(save_tables_dir, table_file), "w") as io:
+				io.write(latex_table)
