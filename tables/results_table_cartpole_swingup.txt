@@ -1,0 +1,14 @@
+\begin{tabular}{llllll}
+\toprule
+\multicolumn{6}{r}{Easy Color Shift} \\
+\multicolumn{3}{r}{Inverse Dynamics Auxiliary} & \multicolumn{3}{r}{Rotation Auxiliary} \\
+Reset Every Episode & No Reset & Reset Every Action Step & Reset Every Episode & No Reset & Reset Every Action Step \\
+\midrule
+822 (154) & 822 (154) & 822 (154) & 571 (271) & 571 (271) & 571 (271) \\
+854 (67) & 434 (337) & 834 (136) & 551 (247) & 131 (99) & 615 (216) \\
+852 (57) & 177 (191) & 839 (127) & 512 (245) & 112 (73) & 629 (203) \\
+816 (113) & 110 (98) & 843 (116) & 473 (251) & 103 (73) & 634 (199) \\
+699 (226) & 103 (69) & 843 (114) & 454 (257) & 97 (68) & 619 (201) \\
+401 (261) & 122 (55) & 838 (125) & 434 (268) & 97 (74) & 589 (218) \\
+\bottomrule
+\end{tabular}
