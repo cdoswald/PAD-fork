@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	}
 
 	main_tasks = ["cartpole_swingup", "cheetah_run"]
-	color_modes = ["color_easy"]
+	color_modes = ["color_easy", "color_hard"]
 	aux_tasks = ["inv", "rot"]
 	reset_agent_modes = ["reset_episode", "reset_none", "reset_ss_updates"]
 	aux_update_steps = [0, 1, 2, 4, 8, 16]
