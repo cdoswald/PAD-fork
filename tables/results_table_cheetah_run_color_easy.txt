@@ -3,6 +3,7 @@
  & \multicolumn{3}{r}{Inverse Dynamics Auxiliary} & \multicolumn{3}{r}{Rotation Auxiliary} \\
  & Reset Every Episode & No Reset & Reset Every Action Step & Reset Every Episode & No Reset & Reset Every Action Step \\
 \midrule
+Source Domain & 173 (48) & 173 (48) & 173 (48) & 240 (20) & 240 (20) & 240 (20) \\
 0 & 139 (64) & 139 (64) & 139 (64) & 189 (78) & 189 (78) & 189 (78) \\
 1 & 121 (58) & 29 (48) & 133 (62) & 188 (77) & 30 (59) & 189 (78) \\
 2 & 102 (48) & 4 (16) & 132 (61) & 188 (76) & 20 (47) & 190 (78) \\

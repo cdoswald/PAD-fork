@@ -1,0 +1,14 @@
+\begin{tabular}{lllllll}
+\toprule
+ & \multicolumn{3}{r}{Inverse Dynamics Auxiliary} & \multicolumn{3}{r}{Rotation Auxiliary} \\
+ & Reset Every Episode & No Reset & Reset Every Action Step & Reset Every Episode & No Reset & Reset Every Action Step \\
+\midrule
+Source Domain & 870 (1) & 870 (1) & 870 (1) & 780 (36) & 780 (36) & 780 (36) \\
+0 & 654 (315) & 654 (315) & 654 (315) & 417 (265) & 417 (265) & 417 (265) \\
+1 & 707 (273) & 290 (272) & 656 (315) & 384 (243) & 113 (70) & 429 (256) \\
+2 & 715 (262) & 132 (121) & 659 (314) & 353 (231) & 107 (63) & 451 (250) \\
+4 & 684 (272) & 112 (89) & 662 (315) & 334 (223) & 100 (51) & 440 (248) \\
+8 & 565 (293) & 85 (62) & 662 (310) & 307 (214) & 92 (54) & 428 (249) \\
+16 & 338 (245) & 96 (61) & 654 (311) & 291 (208) & 95 (48) & 405 (250) \\
+\bottomrule
+\end{tabular}

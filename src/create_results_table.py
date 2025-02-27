@@ -35,16 +35,26 @@ if __name__ == "__main__":
 
 			all_data_dict = {}
 			for aux_task in aux_tasks:
-				for reset_mode in reset_agent_modes:
 
-					# Load aggregated data
+				# Load source domain evaluation baseline
+				temp_data_dir = f"logs/{main_task}/{aux_task}/0/eval_train_env"
+				temp_data_file_name = f"formatted_data_{main_task}_{aux_task}_eval_train_env_rewards.p"
+				with open(os.path.join(temp_data_dir, temp_data_file_name), "rb") as io:
+					source_domain_rewards_episode_by_seed = torch.load(io, weights_only=False)
+				source_domain_rewards_avg = np.mean(source_domain_rewards_episode_by_seed)
+				source_domain_rewards_stddev = np.std(source_domain_rewards_episode_by_seed)
+
+				# Load aggregated data for each reset mode
+				for reset_mode in reset_agent_modes:
 					temp_data_dir = f"logs/{main_task}/{aux_task}/0/{reset_mode}"
 					temp_data_file_name = f"formatted_data_{main_task}_{aux_task}_{reset_mode}_{color_mode}.p"
 					with open(os.path.join(temp_data_dir, temp_data_file_name), "rb") as io:
 						temp_data = torch.load(io, weights_only=False)
 
 					# Calculate average and stddev reward across seeds and episodes for each aux step
-					aux_step_data_dict = {}
+					aux_step_data_dict = {
+						"Source Domain":f"{int(source_domain_rewards_avg)} ({int(source_domain_rewards_stddev)})"
+					}
 					for aux_step in aux_update_steps:
 						aux_step_rewards_episode_by_seed = temp_data[aux_step]["rewards_episode_by_seed"]
 						aux_step_rewards_avg = np.mean(aux_step_rewards_episode_by_seed)
