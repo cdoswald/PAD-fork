@@ -55,9 +55,27 @@ if __name__ == "__main__":
 		task = params["task"]
 		for aux_model in params["aux_models"]:
 			work_dir = f"logs/{domain}_{task}/{aux_model}/0"
+
+			# Load evaluation data for original training environment
+			eval_train_env_dir = os.path.join(work_dir, "eval_train_env")
+			eval_train_fp_pattern = os.path.join(eval_train_env_dir, 'pad_train_evalseed_*.pt')
+			eval_train_seed_results_files = glob(eval_train_fp_pattern)
+			if eval_train_seed_results_files:
+				temp_reward_list = []
+				for eval_train_seed_i_result_file in eval_train_seed_results_files:
+					eval_train_seed_i_results = torch.load(eval_train_seed_i_result_file, weights_only=False)
+					temp_reward_list.append(eval_train_seed_i_results["episode_rewards"])
+				# Concatenate across seeds
+				eval_train_rewards_episode_by_seed = np.array(temp_reward_list).T
+				# Save out data (to create aggregated tables)
+				formatted_data_file_name = f"formatted_data_{domain}_{task}_{aux_model}_eval_train_env_rewards.p"
+				with open(os.path.join(eval_train_env_dir, formatted_data_file_name), "wb") as io:
+					torch.save(eval_train_rewards_episode_by_seed, io)
+
+			# Load evaluation data for out-of-distribution environments
 			sub_dirs = [f"reset_{mode}" for mode in reset_agent_modes]
-			for sub_dir in sub_dirs:
-				for color_mode in params["color_modes"]:
+			for color_mode in params["color_modes"]:
+				for sub_dir in sub_dirs:
 					results_dir = os.path.join(work_dir, sub_dir)
 					results_fp_pattern = os.path.join(results_dir, f'pad_{color_mode}_evalseed_*.pt')
 					seed_results_files = glob(results_fp_pattern)
@@ -128,6 +146,28 @@ if __name__ == "__main__":
 							rewards_max_y = float("-inf")
 							fig, axes = plt.subplots(2, 2, figsize=(16, 8))
 							fig.subplots_adjust(hspace=0.35, wspace=0.25)
+
+							# Plot training env evaluation rewards (no domain shift)
+							eval_train_rewards_episode_by_avg_seed = np.mean(eval_train_rewards_episode_by_seed, axis=1)
+							if smooth_rewards:
+								eval_train_rewards_episode_by_avg_seed = gaussian_filter1d(
+									eval_train_rewards_episode_by_avg_seed,
+									rewards_gaussian_filter_stddev,
+								)
+							n_episodes = len(eval_train_rewards_episode_by_avg_seed)
+							rewards_max_y = max(rewards_max_y, np.max(eval_train_rewards_episode_by_avg_seed))
+							sns.lineplot(
+								x=range(n_episodes),
+								y=eval_train_rewards_episode_by_avg_seed,
+								label=None,
+								ax=axes[0, 0],
+								color="gray",
+								linestyle="--",
+								alpha=0.75,
+								legend=False,
+							)
+
+							# Plot out-of-distribution env evaluation rewards
 							for plot_update_step in plot_update_steps:
 
 								# Get data for plot update step
