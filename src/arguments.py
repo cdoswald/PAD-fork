@@ -52,7 +52,7 @@ def parse_args():
 	parser.add_argument('--num_shared_layers', default=-1, type=int) # number of shared conv layers
 	parser.add_argument('--num_filters', default=32, type=int) # number of filters in conv
 	parser.add_argument('--curl_latent_dim', default=128, type=int) # latent dimension for curl
-	parser.add_argument('--ss_update_quantities', default=1) # number of updates per step
+	parser.add_argument('--ss_update_quantities', default=1) # number of updates per action step
 	
 	# sac
 	parser.add_argument('--discount', default=0.99, type=float)
@@ -71,6 +71,7 @@ def parse_args():
 	parser.add_argument('--pad_batch_size', default=32, type=int)
 	parser.add_argument('--pad_num_episodes', default=100, type=int)
 	parser.add_argument('--pad_reset_agent', default='episode', type=str) # agent weight reset freq
+	parser.add_argument('--freeze_aux_decoder', default=False, action='store_true') # freeze auxiliary decoder
 
 	args = parser.parse_args()
 

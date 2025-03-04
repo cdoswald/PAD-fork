@@ -48,6 +48,28 @@ def evaluate(env, agent, args, video, adapt=False, orig_env=None):
 		step = 0
 		ep_agent.train()
 
+		# Freeze episode agent auxiliary decoder (if applicable)
+		if args.freeze_aux_decoder:
+			if i == 0:
+				print("Freezing auxiliary decoder")
+			if args.use_inv:
+				for param in ep_agent.inv.parameters():
+					param.requires_grad = False
+			elif args.use_rot:
+				for param in ep_agent.rot.parameters():
+					param.requires_grad = False
+			else:
+				raise Warning("Freeze auxiliary decoder set to True, but no auxiliary model specified")
+		
+		# Freeze original agent auxiliary decoder (if applicable)
+		if args.freeze_aux_decoder and orig_env is not None:
+			if args.use_inv:
+				for param in orig_agent.inv.parameters():
+					param.requires_grad = False
+			elif args.use_rot:
+				for param in orig_agent.rot.parameters():
+					param.requires_grad = False
+
 		# Synchronize starting position
 		# (note that we have to do this here since the initial frame stack queue starts
 		# with 3 observations, and only 1 observation is added in subsequent steps)
@@ -327,7 +349,7 @@ if __name__ == '__main__':
 	# import argparse
 	# import numpy as np
 
-	# def parse_args():
+	# def parse_args_manual():
 	# 	# Manually create a Namespace object with the default values
 	# 	args = argparse.Namespace()
 
@@ -369,8 +391,8 @@ if __name__ == '__main__':
 	# 	args.encoder_tau = 0.05
 
 	# 	# self-supervision
-	# 	args.use_rot = False
-	# 	args.use_inv = True
+	# 	args.use_rot = True
+	# 	args.use_inv = False
 	# 	args.use_curl = False
 	# 	args.ss_lr = 1e-3
 	# 	args.ss_update_freq = 2
@@ -388,19 +410,20 @@ if __name__ == '__main__':
 
 	# 	# misc
 	# 	args.seed = 0
-	# 	args.work_dir = "logs/cartpole_swingup/inv/0"
+	# 	args.work_dir = "logs/cartpole_swingup/rot/0_freeze_decoder"
 	# 	args.save_model = False
 	# 	args.save_video = False
 
 	# 	# test
-	# 	args.pad_checkpoint = 500000
+	# 	args.pad_checkpoint = 100000
 	# 	args.pad_batch_size = 32
 	# 	args.pad_num_episodes = 100
 	# 	args.pad_reset_agent = 'episode'
+	# 	args.freeze_aux_decoder = True
 		
 	# 	return args
 
-	# args = parse_args()
+	# args = parse_args_manual()
 	# main(args)
 
 	# atol = 1e-6
