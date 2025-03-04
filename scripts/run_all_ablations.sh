@@ -1,0 +1,16 @@
+bash scripts/ablations/eval_multistep_cartpole_swingup_color_easy_inv_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cartpole_swingup_color_easy_rot_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cheetah_run_color_easy_inv_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cheetah_run_color_easy_rot_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cartpole_swingup_color_hard_inv_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cartpole_swingup_color_hard_rot_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cheetah_run_color_hard_inv_freeze_decoder.sh
+
+bash scripts/ablations/eval_multistep_cheetah_run_color_hard_rot_freeze_decoder.sh
+
