@@ -4,7 +4,7 @@ I am very grateful to the authors for making their code publicly available.
 My contributions, which extend their experiments and were made after the original publication as part of my [master's thesis](https://www.proquest.com/docview/3206822605/4FA5BC2BBBB1487EPQ/1), 
 are documented in the commit history [here](https://github.com/nicklashansen/policy-adaptation-during-deployment/compare/master...cdoswald:PAD-fork:master). I have no affiliation with the original research team._
 
-_The following is the original README from Hansen et al. (2020):_
+_The following is the README from Hansen et al. (2020)'s repository:_
 
 
 # Self-Supervised Policy Adaptation during Deployment
